@@ -1,0 +1,23 @@
+{
+  "name": "obsidian-improved-random-note",
+  "version": "1.0.0",
+  "description": "Open a random note based on filters like folders, tags and properties.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "typescript --watch",
+    "build": "typescript"
+  },
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "random",
+    "note"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "devDependencies": {
+    "obsidian": "latest",
+    "typescript": "latest",
+    "@types/node": "latest"
+  }
+}
