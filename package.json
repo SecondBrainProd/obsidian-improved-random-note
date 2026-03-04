@@ -4,8 +4,8 @@
   "description": "Open a random note based on filters like folders, tags and properties.",
   "main": "main.js",
   "scripts": {
-    "dev": "typescript --watch",
-    "build": "typescript"
+    "dev": "esbuild main.ts --bundle --external:obsidian --format=cjs --watch --outfile=main.js",
+    "build": "esbuild main.ts --bundle --external:obsidian --format=cjs --minify --outfile=main.js"
   },
   "keywords": [
     "obsidian",
@@ -16,8 +16,9 @@
   "author": "Antigravity",
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "latest",
+    "esbuild": "^0.27.3",
     "obsidian": "latest",
-    "typescript": "latest",
-    "@types/node": "latest"
+    "typescript": "latest"
   }
 }

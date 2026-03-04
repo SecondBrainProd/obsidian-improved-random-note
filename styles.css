@@ -1,0 +1,126 @@
+/* Обеспечиваем, чтобы список подсказок всегда был поверх всех элементов модального окна */
+.suggestion-container {
+    z-index: 10000 !important;
+    pointer-events: all !important;
+}
+
+.suggestion-item {
+    cursor: pointer !important;
+    pointer-events: all !important;
+}
+
+/* Подсветка выбранного элемента */
+.suggestion-item.is-selected {
+    background-color: var(--background-modifier-hover);
+}
+
+/* === Sidebar Widget: Случайная заметка === */
+
+.random-note-widget {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.random-note-card {
+    background: var(--background-secondary);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+    border: 1px solid var(--background-modifier-border);
+    flex: 1;
+    overflow-y: auto;
+}
+
+.random-note-title {
+    margin: 0 0 4px 0;
+    font-size: 1.05em;
+    cursor: pointer;
+    color: var(--text-accent);
+    transition: color 0.15s;
+}
+
+.random-note-title:hover {
+    color: var(--text-accent-hover);
+    text-decoration: underline;
+}
+
+.random-note-path {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.random-note-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.random-note-tag {
+    background: var(--tag-background);
+    color: var(--tag-color);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 0.75em;
+}
+
+.random-note-preview {
+    font-size: 0.85em;
+    color: var(--text-normal);
+    max-height: 200px;
+    overflow-y: auto;
+    line-height: 1.5;
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: 8px;
+}
+
+.random-note-preview p {
+    margin: 0 0 6px 0;
+}
+
+.random-note-empty {
+    color: var(--text-muted);
+    font-style: italic;
+    text-align: center;
+    padding: 20px 0;
+}
+
+.random-note-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.random-note-btn {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--interactive-normal);
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background 0.15s;
+}
+
+.random-note-btn:hover {
+    background: var(--interactive-hover);
+}
+
+.random-note-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.random-note-btn-open {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+}
+
+.random-note-btn-open:hover {
+    background: var(--interactive-accent-hover);
+}
