@@ -35,7 +35,11 @@ An [Obsidian](https://obsidian.md) plugin that opens a random note based on cust
 
 ## 📸 Screenshots
 
-*Coming soon*
+![Preview](assets/preview.png)
+
+![Settings and Presets](assets/screenshot-1.png)
+![Sidebar Widget](assets/screenshot-2.png)
+![Random Note in action](assets/screenshot-3.png)
 
 ## 🚀 Installation
 
