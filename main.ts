@@ -17,6 +17,7 @@ interface ImprovedRandomNoteSettings {
     matchCondition: 'AND' | 'OR';
     openInNewTab: boolean;
     historySize: number;
+    batchSize: number;
 }
 
 interface ImprovedRandomNoteData {
@@ -33,6 +34,7 @@ const DEFAULT_SETTINGS: ImprovedRandomNoteSettings = {
     matchCondition: 'OR',
     openInNewTab: false,
     historySize: 5,
+    batchSize: 3,
 }
 
 const DEFAULT_DATA: ImprovedRandomNoteData = {
@@ -72,6 +74,12 @@ export default class ImprovedRandomNotePlugin extends Plugin {
                 await this.savePluginData();
                 new Notice('История очищена.');
             }
+        });
+
+        this.addCommand({
+            id: 'open-multiple-random-notes',
+            name: `Открыть N случайных заметок`,
+            callback: () => this.openMultipleRandomNotes(),
         });
 
         this.addCommand({
@@ -260,6 +268,33 @@ export default class ImprovedRandomNotePlugin extends Plugin {
             new Notice(`Пресет «${preset.name}» → ${randomFile.basename}`);
         } else {
             new Notice(`Открыто: ${randomFile.basename}`);
+        }
+    }
+
+    async openMultipleRandomNotes() {
+        const n = this.settings.batchSize;
+        const opened: string[] = [];
+
+        for (let i = 0; i < n; i++) {
+            const file = this.getRandomCandidate();
+            if (!file) break;
+
+            // Добавляем в историю сразу, чтобы следующая итерация не выбрала ту же заметку
+            this.recentHistory.push(file.path);
+            if (this.recentHistory.length > this.settings.historySize) {
+                this.recentHistory = this.recentHistory.slice(-this.settings.historySize);
+            }
+
+            await this.app.workspace.getLeaf('tab').openFile(file);
+            opened.push(file.basename);
+        }
+
+        await this.savePluginData();
+
+        if (opened.length === 0) {
+            new Notice('Нет заметок, соответствующих фильтрам.');
+        } else {
+            new Notice(`Открыто ${opened.length} заметок:\n${opened.join(', ')}`);
         }
     }
 }
@@ -598,6 +633,18 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
                 .onChange(async (v) => {
                     const num = parseInt(v, 10);
                     this.plugin.settings.historySize = isNaN(num) ? 5 : Math.max(0, num);
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Batch Size (N)')
+            .setDesc('Количество заметок, которые открываются командой «Открыть N случайных заметок».')
+            .addText(text => text
+                .setPlaceholder('3')
+                .setValue(String(this.plugin.settings.batchSize))
+                .onChange(async (v) => {
+                    const num = parseInt(v, 10);
+                    this.plugin.settings.batchSize = isNaN(num) ? 3 : Math.max(1, Math.min(20, num));
                     await this.plugin.saveSettings();
                 }));
 
