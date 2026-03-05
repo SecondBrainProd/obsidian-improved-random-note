@@ -1,6 +1,6 @@
 {
   "name": "obsidian-improved-random-note",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Open a random note based on filters like folders, tags and properties.",
   "main": "main.js",
   "scripts": {
@@ -13,7 +13,7 @@
     "random",
     "note"
   ],
-  "author": "Antigravity",
+  "author": "Dmitriy Laukhin",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "latest",

@@ -1,4 +1,5 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, AbstractInputSuggest, FuzzySuggestModal, ItemView, WorkspaceLeaf, MarkdownRenderer } from 'obsidian';
+import { Locale, LOCALE_NAMES, SUPPORTED_LOCALES, TRANSLATIONS, detectLocale } from './i18n';
 
 interface FilterPreset {
     name: string;
@@ -18,6 +19,7 @@ interface ImprovedRandomNoteSettings {
     openInNewTab: boolean;
     historySize: number;
     batchSize: number;
+    locale: Locale;
 }
 
 interface ImprovedRandomNoteData {
@@ -35,6 +37,7 @@ const DEFAULT_SETTINGS: ImprovedRandomNoteSettings = {
     openInNewTab: false,
     historySize: 5,
     batchSize: 3,
+    locale: detectLocale(),
 }
 
 const DEFAULT_DATA: ImprovedRandomNoteData = {
@@ -51,16 +54,19 @@ export default class ImprovedRandomNotePlugin extends Plugin {
     presets: FilterPreset[] = [];
     private presetCommandIds: string[] = [];
 
+    get t() {
+        return TRANSLATIONS[this.settings?.locale ?? detectLocale()];
+    }
     async onload() {
         await this.loadSettings();
 
-        this.addRibbonIcon('shuffle', 'Открыть случайную заметку (с фильтрами)', () => {
+        this.addRibbonIcon('shuffle', this.t.ribbonTooltip, () => {
             this.openRandomNote();
         });
 
         this.addCommand({
             id: 'open-improved-random-note',
-            name: 'Открыть случайную заметку...',
+            name: this.t.cmdOpenRandom,
             callback: () => {
                 this.openRandomNote();
             }
@@ -68,26 +74,26 @@ export default class ImprovedRandomNotePlugin extends Plugin {
 
         this.addCommand({
             id: 'clear-random-note-history',
-            name: 'Очистить историю случайных заметок',
+            name: this.t.cmdClearHistory,
             callback: async () => {
                 this.recentHistory = [];
                 await this.savePluginData();
-                new Notice('История очищена.');
+                new Notice(this.t.historyClearedNotice);
             }
         });
 
         this.addCommand({
             id: 'open-multiple-random-notes',
-            name: `Открыть N случайных заметок`,
+            name: this.t.cmdOpenMultiple,
             callback: () => this.openMultipleRandomNotes(),
         });
 
         this.addCommand({
             id: 'pick-random-note-preset',
-            name: 'Выбрать пресет...',
+            name: this.t.cmdPickPreset,
             callback: () => {
                 if (this.presets.length === 0) {
-                    new Notice('Нет сохранённых пресетов. Создайте пресет в настройках плагина.');
+                    new Notice(this.t.noPresets);
                     return;
                 }
                 new PresetPickerModal(this.app, this).open();
@@ -100,7 +106,7 @@ export default class ImprovedRandomNotePlugin extends Plugin {
 
         this.addCommand({
             id: 'toggle-random-note-sidebar',
-            name: 'Показать виджет случайной заметки',
+            name: this.t.cmdToggleSidebar,
             callback: () => this.activateView(),
         });
 
@@ -138,7 +144,7 @@ export default class ImprovedRandomNotePlugin extends Plugin {
             const commandId = `improved-random-note:open-preset-${i}`;
             this.addCommand({
                 id: `open-preset-${i}`,
-                name: `Случайная заметка: ${preset.name}`,
+                name: `${this.t.cmdPresetPrefix} ${preset.name}`,
                 callback: () => {
                     this.openRandomNote(preset);
                 }
@@ -251,11 +257,10 @@ export default class ImprovedRandomNotePlugin extends Plugin {
     async openRandomNote(preset?: FilterPreset) {
         const randomFile = this.getRandomCandidate(preset);
         if (!randomFile) {
-            new Notice('Ничего не найдено с такими фильтрами.');
+            new Notice(this.t.noNotesFound);
             return;
         }
 
-        // Добавляем в историю
         this.recentHistory.push(randomFile.path);
         if (this.recentHistory.length > this.settings.historySize) {
             this.recentHistory = this.recentHistory.slice(-this.settings.historySize);
@@ -265,9 +270,9 @@ export default class ImprovedRandomNotePlugin extends Plugin {
         const leaf = this.settings.openInNewTab ? this.app.workspace.getLeaf('tab') : this.app.workspace.getLeaf(false);
         await leaf.openFile(randomFile);
         if (preset) {
-            new Notice(`Пресет «${preset.name}» → ${randomFile.basename}`);
+            new Notice(this.t.presetOpened(preset.name, randomFile.basename));
         } else {
-            new Notice(`Открыто: ${randomFile.basename}`);
+            new Notice(this.t.opened(randomFile.basename));
         }
     }
 
@@ -278,13 +283,10 @@ export default class ImprovedRandomNotePlugin extends Plugin {
         for (let i = 0; i < n; i++) {
             const file = this.getRandomCandidate();
             if (!file) break;
-
-            // Добавляем в историю сразу, чтобы следующая итерация не выбрала ту же заметку
             this.recentHistory.push(file.path);
             if (this.recentHistory.length > this.settings.historySize) {
                 this.recentHistory = this.recentHistory.slice(-this.settings.historySize);
             }
-
             await this.app.workspace.getLeaf('tab').openFile(file);
             opened.push(file.basename);
         }
@@ -292,9 +294,9 @@ export default class ImprovedRandomNotePlugin extends Plugin {
         await this.savePluginData();
 
         if (opened.length === 0) {
-            new Notice('Нет заметок, соответствующих фильтрам.');
+            new Notice(this.t.noNotesFound);
         } else {
-            new Notice(`Открыто ${opened.length} заметок:\n${opened.join(', ')}`);
+            new Notice(this.t.openedN(opened.length, opened.join(', ')));
         }
     }
 }
@@ -316,7 +318,7 @@ class RandomNoteView extends ItemView {
     }
 
     getDisplayText(): string {
-        return 'Случайная заметка';
+        return this.plugin.t.widgetTitle;
     }
 
     getIcon(): string {
@@ -341,7 +343,7 @@ class RandomNoteView extends ItemView {
 
         if (!file) {
             container.createEl('p', {
-                text: 'Не найдено заметок с текущими фильтрами.',
+                text: this.plugin.t.widgetEmpty,
                 cls: 'random-note-empty',
             });
             this.addButtons(container);
@@ -392,7 +394,7 @@ class RandomNoteView extends ItemView {
             const excerpt = content.trim().slice(0, 300);
             await MarkdownRenderer.render(this.app, excerpt, previewEl, file.path, this);
         } catch {
-            previewEl.createEl('p', { text: 'Не удалось загрузить превью.' });
+            previewEl.createEl('p', { text: this.plugin.t.widgetPreviewError });
         }
 
         this.addButtons(container);
@@ -404,13 +406,13 @@ class RandomNoteView extends ItemView {
         const refreshBtn = btnContainer.createEl('button', {
             cls: 'random-note-btn',
         });
-        refreshBtn.innerHTML = '🔄 Следующая';
+        refreshBtn.innerHTML = this.plugin.t.widgetNext;
         refreshBtn.addEventListener('click', () => this.showRandomNote());
 
         const openBtn = btnContainer.createEl('button', {
             cls: 'random-note-btn random-note-btn-open',
         });
-        openBtn.innerHTML = '📄 Открыть';
+        openBtn.innerHTML = this.plugin.t.widgetOpen;
         openBtn.addEventListener('click', () => this.openCurrentNote());
         openBtn.disabled = !this.currentFile;
     }
@@ -440,8 +442,17 @@ abstract class MultiSuggest<T> extends AbstractInputSuggest<T> {
 
     getSuggestions(query: string): T[] {
         const lastPart = query.split(',').pop()?.trim().toLowerCase() || '';
+
+        // Исключаем уже введённые значения
+        const entered = new Set(
+            this.inputEl.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+        );
+
         return this.getItems()
-            .filter(item => this.toString(item).toLowerCase().contains(lastPart))
+            .filter(item => {
+                const str = this.toString(item).toLowerCase();
+                return str.contains(lastPart) && !entered.has(str);
+            })
             .slice(0, 10);
     }
 
@@ -521,7 +532,24 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl('h2', { text: 'Improved Random Note Settings' });
+        const t = this.plugin.t;
+        containerEl.createEl('h2', { text: t.settingsTitle });
+
+        // --- Language selector (always at the top) ---
+        new Setting(containerEl)
+            .setName(t.langLabel)
+            .setDesc(t.langDesc)
+            .addDropdown(dd => {
+                for (const loc of SUPPORTED_LOCALES) {
+                    dd.addOption(loc, LOCALE_NAMES[loc]);
+                }
+                dd.setValue(this.plugin.settings.locale)
+                    .onChange(async (v) => {
+                        this.plugin.settings.locale = v as Locale;
+                        await this.plugin.saveSettings();
+                        this.display(); // re-render settings in new language
+                    });
+            });
 
         const createSetting = (name: string, desc: string, key: keyof ImprovedRandomNoteSettings, SuggestClass: any) => {
             new Setting(containerEl)
@@ -537,34 +565,33 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
                 });
         };
 
-        createSetting('Included Folders', 'Папки для поиска.', 'includedFolders', FolderSuggest);
-        createSetting('Included Tags', 'Теги для поиска (с #).', 'includedTags', TagSuggest);
-        createSetting('Included Properties', 'YAML-свойства (ключи).', 'includedProperties', PropertySuggest);
-        createSetting('Excluded Folders', 'Исключить папки.', 'excludedFolders', FolderSuggest);
+        createSetting(t.includedFoldersName, t.includedFoldersDesc, 'includedFolders', FolderSuggest);
+        createSetting(t.includedTagsName, t.includedTagsDesc, 'includedTags', TagSuggest);
+        createSetting(t.includedPropertiesName, t.includedPropertiesDesc, 'includedProperties', PropertySuggest);
+        createSetting(t.excludedFoldersName, t.excludedFoldersDesc, 'excludedFolders', FolderSuggest);
 
         new Setting(containerEl)
-            .setName('Match Condition')
-            .setDesc('Логика фильтров.')
+            .setName(t.matchConditionName)
+            .setDesc(t.matchConditionDesc)
             .addDropdown(dd => dd
-                .addOption('OR', 'ИЛИ (любое условие)')
-                .addOption('AND', 'И (все условия сразу)')
+                .addOption('OR', t.matchOr)
+                .addOption('AND', t.matchAnd)
                 .setValue(this.plugin.settings.matchCondition)
                 .onChange(async (v) => {
                     this.plugin.settings.matchCondition = v as 'AND' | 'OR';
                     await this.plugin.saveSettings();
                 }));
 
-        // --- Секция пресетов ---
-        containerEl.createEl('h3', { text: 'Presets' });
+        containerEl.createEl('h3', { text: t.presetsHeader });
 
         new Setting(containerEl)
-            .setName('Save Current Filters as Preset')
-            .setDesc('Сохранить текущие фильтры как именованный пресет.')
+            .setName(t.savePresetName)
+            .setDesc(t.savePresetDesc)
             .addButton(btn => btn
-                .setButtonText('Сохранить')
+                .setButtonText(t.savePresetBtn)
                 .setCta()
                 .onClick(async () => {
-                    const name = await this.promptForName();
+                    const name = await this.promptForName(t.presetNamePrompt, t.cancel, t.save);
                     if (!name) return;
                     const preset: FilterPreset = {
                         name,
@@ -577,19 +604,18 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
                     this.plugin.presets.push(preset);
                     await this.plugin.savePluginData();
                     this.plugin.registerPresetCommands();
-                    new Notice(`Пресет «${name}» сохранён.`);
+                    new Notice(t.presetSaved(name));
                     this.display();
                 }));
 
-        // Список сохранённых пресетов
         for (let i = 0; i < this.plugin.presets.length; i++) {
             const preset = this.plugin.presets[i];
-            const desc = this.presetDescription(preset);
+            const desc = this.presetDescription(preset, t.presetMatchAnd, t.presetMatchOr);
             new Setting(containerEl)
                 .setName(preset.name)
                 .setDesc(desc)
                 .addButton(btn => btn
-                    .setButtonText('Загрузить')
+                    .setButtonText(t.loadBtn)
                     .onClick(async () => {
                         this.plugin.settings.includedFolders = preset.includedFolders;
                         this.plugin.settings.includedTags = preset.includedTags;
@@ -597,27 +623,27 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
                         this.plugin.settings.excludedFolders = preset.excludedFolders;
                         this.plugin.settings.matchCondition = preset.matchCondition;
                         await this.plugin.saveSettings();
-                        new Notice(`Пресет «${preset.name}» загружен в текущие фильтры.`);
+                        new Notice(t.presetLoaded(preset.name));
                         this.display();
                     }))
                 .addButton(btn => btn
-                    .setButtonText('Удалить')
+                    .setButtonText(t.deleteBtn)
                     .setWarning()
                     .onClick(async () => {
                         this.plugin.presets.splice(i, 1);
                         await this.plugin.savePluginData();
                         this.plugin.registerPresetCommands();
-                        new Notice(`Пресет «${preset.name}» удалён.`);
+                        new Notice(t.presetDeleted(preset.name));
                         this.display();
                     }));
         }
 
-        containerEl.createEl('h3', { text: 'Appearance & Behavior' });
+        containerEl.createEl('h3', { text: t.behaviorHeader });
 
         new Setting(containerEl)
-            .setName('Open in New Tab')
-            .setDesc('Всегда открывать в новой вкладке.')
-            .addToggle(t => t
+            .setName(t.openInNewTabName)
+            .setDesc(t.openInNewTabDesc)
+            .addToggle(tog => tog
                 .setValue(this.plugin.settings.openInNewTab)
                 .onChange(async (v) => {
                     this.plugin.settings.openInNewTab = v;
@@ -625,8 +651,8 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('History Size')
-            .setDesc('Сколько последних заметок запоминать, чтобы не открывать повторно (0 — отключить).')
+            .setName(t.historySizeName)
+            .setDesc(t.historySizeDesc)
             .addText(text => text
                 .setPlaceholder('5')
                 .setValue(String(this.plugin.settings.historySize))
@@ -637,8 +663,8 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Batch Size (N)')
-            .setDesc('Количество заметок, которые открываются командой «Открыть N случайных заметок».')
+            .setName(t.batchSizeName)
+            .setDesc(t.batchSizeDesc)
             .addText(text => text
                 .setPlaceholder('3')
                 .setValue(String(this.plugin.settings.batchSize))
@@ -649,32 +675,32 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Clear History')
-            .setDesc(`Сейчас в истории: ${this.plugin.recentHistory.length} заметок.`)
+            .setName(t.clearHistoryName)
+            .setDesc(t.clearHistoryDesc(this.plugin.recentHistory.length))
             .addButton(btn => btn
-                .setButtonText('Очистить')
+                .setButtonText(t.clearHistoryBtn)
                 .setCta()
                 .onClick(async () => {
                     this.plugin.recentHistory = [];
                     await this.plugin.savePluginData();
-                    new Notice('История очищена.');
+                    new Notice(t.historyClearedNotice);
                     this.display();
                 }));
     }
 
-    private presetDescription(preset: FilterPreset): string {
+    private presetDescription(preset: FilterPreset, andLabel: string, orLabel: string): string {
         const parts: string[] = [];
         if (preset.includedFolders) parts.push(`📁 ${preset.includedFolders}`);
         if (preset.includedTags) parts.push(`🏷️ ${preset.includedTags}`);
         if (preset.includedProperties) parts.push(`📝 ${preset.includedProperties}`);
         if (preset.excludedFolders) parts.push(`🚫 ${preset.excludedFolders}`);
-        parts.push(preset.matchCondition === 'AND' ? '(И)' : '(ИЛИ)');
+        parts.push(preset.matchCondition === 'AND' ? andLabel : orLabel);
         return parts.join(' | ');
     }
 
-    private promptForName(): Promise<string | null> {
+    private promptForName(promptText: string, cancelLabel: string, saveLabel: string): Promise<string | null> {
         return new Promise((resolve) => {
-            const modal = new PromptModal(this.app, 'Название пресета', '', (result) => {
+            const modal = new PromptModal(this.app, promptText, '', cancelLabel, saveLabel, (result) => {
                 resolve(result || null);
             });
             modal.open();
@@ -688,13 +714,17 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
 class PromptModal extends Modal {
     private promptText: string;
     private defaultValue: string;
+    private cancelLabel: string;
+    private saveLabel: string;
     private onSubmit: (result: string) => void;
     private inputEl!: HTMLInputElement;
 
-    constructor(app: App, promptText: string, defaultValue: string, onSubmit: (result: string) => void) {
+    constructor(app: App, promptText: string, defaultValue: string, cancelLabel: string, saveLabel: string, onSubmit: (result: string) => void) {
         super(app);
         this.promptText = promptText;
         this.defaultValue = defaultValue;
+        this.cancelLabel = cancelLabel;
+        this.saveLabel = saveLabel;
         this.onSubmit = onSubmit;
     }
 
@@ -725,13 +755,13 @@ class PromptModal extends Modal {
         btnContainer.style.justifyContent = 'flex-end';
         btnContainer.style.gap = '8px';
 
-        const cancelBtn = btnContainer.createEl('button', { text: 'Отмена' });
+        const cancelBtn = btnContainer.createEl('button', { text: this.cancelLabel });
         cancelBtn.addEventListener('click', () => {
             this.onSubmit('');
             this.close();
         });
 
-        const okBtn = btnContainer.createEl('button', { text: 'Сохранить', cls: 'mod-cta' });
+        const okBtn = btnContainer.createEl('button', { text: this.saveLabel, cls: 'mod-cta' });
         okBtn.addEventListener('click', () => {
             this.onSubmit(this.inputEl.value.trim());
             this.close();

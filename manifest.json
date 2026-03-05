@@ -1,10 +1,10 @@
 {
     "id": "improved-random-note",
     "name": "Improved Random Note",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "minAppVersion": "0.15.0",
     "description": "Open a random note based on filters like folders, tags and properties.",
-    "author": "Antigravity",
+    "author": "Dmitriy Laukhin",
     "authorUrl": "https://github.com/dementiy",
     "isDesktopOnly": false
 }
