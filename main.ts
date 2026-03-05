@@ -139,9 +139,10 @@ export default class ImprovedRandomNotePlugin extends Plugin {
         this.presetCommandIds = [];
 
         // Регистрируем команду для каждого пресета
+        const pluginId = this.manifest.id;
         for (let i = 0; i < this.presets.length; i++) {
             const preset = this.presets[i];
-            const commandId = `improved-random-note:open-preset-${i}`;
+            const commandId = `${pluginId}:open-preset-${i}`;
             this.addCommand({
                 id: `open-preset-${i}`,
                 name: `${this.t.cmdPresetPrefix} ${preset.name}`,
@@ -153,16 +154,60 @@ export default class ImprovedRandomNotePlugin extends Plugin {
         }
     }
 
+    private validateSettings(raw: unknown): ImprovedRandomNoteSettings {
+        const base = Object.assign({}, DEFAULT_SETTINGS);
+        if (!raw || typeof raw !== 'object') return base;
+
+        const s = raw as Record<string, unknown>;
+        if (typeof s.includedFolders === 'string') base.includedFolders = s.includedFolders;
+        if (typeof s.includedTags === 'string') base.includedTags = s.includedTags;
+        if (typeof s.includedProperties === 'string') base.includedProperties = s.includedProperties;
+        if (typeof s.excludedFolders === 'string') base.excludedFolders = s.excludedFolders;
+        if (s.matchCondition === 'AND' || s.matchCondition === 'OR') base.matchCondition = s.matchCondition;
+        if (typeof s.openInNewTab === 'boolean') base.openInNewTab = s.openInNewTab;
+        if (typeof s.locale === 'string' && SUPPORTED_LOCALES.includes(s.locale as Locale)) base.locale = s.locale as Locale;
+
+        if (typeof s.historySize === 'number' && s.historySize >= 0) base.historySize = s.historySize;
+        else if (typeof s.historySize === 'string') {
+            const n = parseInt(s.historySize, 10);
+            base.historySize = isNaN(n) ? 5 : Math.max(0, n);
+        }
+
+        if (typeof s.batchSize === 'number' && s.batchSize >= 1 && s.batchSize <= 20) base.batchSize = s.batchSize;
+        else if (typeof s.batchSize === 'string') {
+            const n = parseInt(s.batchSize, 10);
+            base.batchSize = isNaN(n) ? 3 : Math.max(1, Math.min(20, n));
+        }
+
+        return base;
+    }
+
+    private validatePreset(raw: unknown): FilterPreset | null {
+        if (!raw || typeof raw !== 'object') return null;
+        const p = raw as Record<string, unknown>;
+        if (typeof p.name !== 'string' || !p.name.trim()) return null;
+        return {
+            name: String(p.name).trim(),
+            includedFolders: typeof p.includedFolders === 'string' ? p.includedFolders : '',
+            includedTags: typeof p.includedTags === 'string' ? p.includedTags : '',
+            includedProperties: typeof p.includedProperties === 'string' ? p.includedProperties : '',
+            excludedFolders: typeof p.excludedFolders === 'string' ? p.excludedFolders : '',
+            matchCondition: p.matchCondition === 'AND' || p.matchCondition === 'OR' ? p.matchCondition : 'OR',
+        };
+    }
+
     async loadSettings() {
         const data = await this.loadData();
         if (data && data.settings) {
-            // Новый формат данных
-            this.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings);
-            this.recentHistory = data.recentHistory || [];
-            this.presets = data.presets || [];
+            this.settings = this.validateSettings(data.settings);
+            this.recentHistory = Array.isArray(data.recentHistory)
+                ? data.recentHistory.filter((p): p is string => typeof p === 'string')
+                : [];
+            this.presets = Array.isArray(data.presets)
+                ? data.presets.map(p => this.validatePreset(p)).filter((p): p is FilterPreset => p !== null)
+                : [];
         } else {
-            // Совместимость со старым форматом (настройки хранились в корне)
-            this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+            this.settings = this.validateSettings(data);
             this.recentHistory = [];
             this.presets = [];
         }
@@ -217,7 +262,7 @@ export default class ImprovedRandomNotePlugin extends Plugin {
                         if (Array.isArray(tags)) fileTags.push(...tags.map(String));
                         else if (tags) fileTags.push(String(tags));
                     }
-                    if (cache?.tags) fileTags.push(...cache.tags.map(t => t.tag));
+                    fileTags.push(...(cache?.tags?.map(t => t.tag).filter(Boolean) ?? []));
                     const normFileTags = fileTags.map(t => (t.startsWith('#') ? t : '#' + t).toLowerCase());
                     const normWantedTags = incTags.map(t => (t.startsWith('#') ? t : '#' + t).toLowerCase());
                     results.push(normWantedTags.some(t => normFileTags.includes(t)));
@@ -374,7 +419,7 @@ class RandomNoteView extends ItemView {
             if (Array.isArray(fmTags)) tags.push(...fmTags.map(String));
             else if (fmTags) tags.push(String(fmTags));
         }
-        if (cache?.tags) tags.push(...cache.tags.map(t => t.tag));
+        tags.push(...(cache?.tags?.map(t => t.tag).filter(Boolean) ?? []));
 
         if (tags.length > 0) {
             const tagsEl = card.createDiv({ cls: 'random-note-tags' });
@@ -406,13 +451,13 @@ class RandomNoteView extends ItemView {
         const refreshBtn = btnContainer.createEl('button', {
             cls: 'random-note-btn',
         });
-        refreshBtn.innerHTML = this.plugin.t.widgetNext;
+        refreshBtn.textContent = this.plugin.t.widgetNext;
         refreshBtn.addEventListener('click', () => this.showRandomNote());
 
         const openBtn = btnContainer.createEl('button', {
             cls: 'random-note-btn random-note-btn-open',
         });
-        openBtn.innerHTML = this.plugin.t.widgetOpen;
+        openBtn.textContent = this.plugin.t.widgetOpen;
         openBtn.addEventListener('click', () => this.openCurrentNote());
         openBtn.disabled = !this.currentFile;
     }
@@ -451,7 +496,7 @@ abstract class MultiSuggest<T> extends AbstractInputSuggest<T> {
         return this.getItems()
             .filter(item => {
                 const str = this.toString(item).toLowerCase();
-                return str.contains(lastPart) && !entered.has(str);
+                return str.includes(lastPart) && !entered.has(str);
             })
             .slice(0, 10);
     }
@@ -481,8 +526,9 @@ class FolderSuggest extends MultiSuggest<TFolder> {
 
 class TagSuggest extends MultiSuggest<string> {
     getItems(): string[] {
-        // @ts-ignore
-        const tags = Object.keys(this.app.metadataCache.getTags());
+        // @ts-ignore — getTags() может вернуть undefined в некоторых версиях Obsidian
+        const tagsObj = this.app.metadataCache.getTags?.() ?? {};
+        const tags = Object.keys(tagsObj);
         return tags.map(t => t.startsWith('#') ? t : '#' + t);
     }
     toString(tag: string): string { return tag; }
