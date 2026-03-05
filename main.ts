@@ -65,7 +65,7 @@ export default class ImprovedRandomNotePlugin extends Plugin {
         });
 
         this.addCommand({
-            id: 'open-improved-random-note',
+            id: 'open-improved-random-note-pro',
             name: this.t.cmdOpenRandom,
             callback: () => {
                 this.openRandomNote();

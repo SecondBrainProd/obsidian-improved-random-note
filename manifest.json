@@ -1,7 +1,7 @@
 {
-    "id": "improved-random-note",
-    "name": "Improved Random Note",
-    "version": "1.1.2",
+    "id": "improved-random-note-pro",
+    "name": "Improved Random Note Pro",
+    "version": "2.0.0",
     "minAppVersion": "0.15.0",
     "description": "Open a random note based on filters like folders, tags and properties.",
     "author": "Dmitriy Laukhin",

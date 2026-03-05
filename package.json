@@ -1,6 +1,6 @@
 {
-  "name": "obsidian-improved-random-note",
-  "version": "1.1.2",
+  "name": "obsidian-improved-random-note-pro",
+  "version": "2.0.0",
   "description": "Open a random note based on filters like folders, tags and properties.",
   "main": "main.js",
   "scripts": {
