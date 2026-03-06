@@ -40,11 +40,6 @@ const DEFAULT_SETTINGS: ImprovedRandomNoteSettings = {
     locale: detectLocale(),
 }
 
-const DEFAULT_DATA: ImprovedRandomNoteData = {
-    settings: DEFAULT_SETTINGS,
-    recentHistory: [],
-    presets: [],
-}
 
 const VIEW_TYPE_RANDOM_NOTE = 'random-note-view';
 
@@ -61,14 +56,14 @@ export default class ImprovedRandomNotePlugin extends Plugin {
         await this.loadSettings();
 
         this.addRibbonIcon('shuffle', this.t.ribbonTooltip, () => {
-            this.openRandomNote();
+            void this.openRandomNote();
         });
 
         this.addCommand({
-            id: 'open-improved-random-note-pro',
+            id: 'open-random-note',
             name: this.t.cmdOpenRandom,
             callback: () => {
-                this.openRandomNote();
+                void this.openRandomNote();
             }
         });
 
@@ -85,7 +80,7 @@ export default class ImprovedRandomNotePlugin extends Plugin {
         this.addCommand({
             id: 'open-multiple-random-notes',
             name: this.t.cmdOpenMultiple,
-            callback: () => this.openMultipleRandomNotes(),
+            callback: () => { void this.openMultipleRandomNotes(); },
         });
 
         this.addCommand({
@@ -107,14 +102,13 @@ export default class ImprovedRandomNotePlugin extends Plugin {
         this.addCommand({
             id: 'toggle-random-note-sidebar',
             name: this.t.cmdToggleSidebar,
-            callback: () => this.activateView(),
+            callback: () => { void this.activateView(); },
         });
 
         this.addSettingTab(new ImprovedRandomNoteSettingTab(this.app, this));
     }
 
     onunload() {
-        this.app.workspace.detachLeavesOfType(VIEW_TYPE_RANDOM_NOTE);
     }
 
     async activateView() {
@@ -134,7 +128,7 @@ export default class ImprovedRandomNotePlugin extends Plugin {
         // Удаляем старые команды пресетов
         for (const cmdId of this.presetCommandIds) {
             // @ts-ignore — internal API
-            this.app.commands.removeCommand(cmdId);
+            (this.app as unknown as { commands: { removeCommand: (id: string) => void } }).commands.removeCommand(cmdId);
         }
         this.presetCommandIds = [];
 
@@ -147,7 +141,7 @@ export default class ImprovedRandomNotePlugin extends Plugin {
                 id: `open-preset-${i}`,
                 name: `${this.t.cmdPresetPrefix} ${preset.name}`,
                 callback: () => {
-                    this.openRandomNote(preset);
+                    void this.openRandomNote(preset);
                 }
             });
             this.presetCommandIds.push(commandId);
@@ -201,10 +195,10 @@ export default class ImprovedRandomNotePlugin extends Plugin {
         if (data && data.settings) {
             this.settings = this.validateSettings(data.settings);
             this.recentHistory = Array.isArray(data.recentHistory)
-                ? data.recentHistory.filter((p): p is string => typeof p === 'string')
+                ? data.recentHistory.filter((p: unknown): p is string => typeof p === 'string')
                 : [];
             this.presets = Array.isArray(data.presets)
-                ? data.presets.map(p => this.validatePreset(p)).filter((p): p is FilterPreset => p !== null)
+                ? data.presets.map((p: unknown) => this.validatePreset(p)).filter((p: FilterPreset | null): p is FilterPreset => p !== null)
                 : [];
         } else {
             this.settings = this.validateSettings(data);
@@ -375,6 +369,7 @@ class RandomNoteView extends ItemView {
     }
 
     async onClose() {
+        await Promise.resolve();
         this.contentEl.empty();
     }
 
@@ -579,7 +574,7 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
         const t = this.plugin.t;
-        containerEl.createEl('h2', { text: t.settingsTitle });
+        new Setting(containerEl).setHeading().setName(t.settingsTitle);
 
         // --- Language selector (always at the top) ---
         new Setting(containerEl)
@@ -590,22 +585,26 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
                     dd.addOption(loc, LOCALE_NAMES[loc]);
                 }
                 dd.setValue(this.plugin.settings.locale)
-                    .onChange(async (v) => {
-                        this.plugin.settings.locale = v as Locale;
-                        await this.plugin.saveSettings();
-                        this.display(); // re-render settings in new language
+                    .onChange((v) => {
+                        void (async () => {
+                            this.plugin.settings.locale = v as Locale;
+                            await this.plugin.saveSettings();
+                            this.display();
+                        })();
                     });
             });
 
-        const createSetting = (name: string, desc: string, key: keyof ImprovedRandomNoteSettings, SuggestClass: any) => {
+        const createSetting = (name: string, desc: string, key: keyof ImprovedRandomNoteSettings, SuggestClass: new (app: App, inputEl: HTMLInputElement) => MultiSuggest<unknown>) => {
             new Setting(containerEl)
                 .setName(name)
                 .setDesc(desc)
                 .addText(text => {
                     text.setValue(this.plugin.settings[key] as string)
-                        .onChange(async (v) => {
-                            (this.plugin.settings as any)[key] = v;
-                            await this.plugin.saveSettings();
+                        .onChange((v) => {
+                            void (async () => {
+                                (this.plugin.settings as unknown as Record<string, unknown>)[key] = v;
+                                await this.plugin.saveSettings();
+                            })();
                         });
                     new SuggestClass(this.app, text.inputEl);
                 });
@@ -623,12 +622,14 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
                 .addOption('OR', t.matchOr)
                 .addOption('AND', t.matchAnd)
                 .setValue(this.plugin.settings.matchCondition)
-                .onChange(async (v) => {
-                    this.plugin.settings.matchCondition = v as 'AND' | 'OR';
-                    await this.plugin.saveSettings();
+                .onChange((v) => {
+                    void (async () => {
+                        this.plugin.settings.matchCondition = v as 'AND' | 'OR';
+                        await this.plugin.saveSettings();
+                    })();
                 }));
 
-        containerEl.createEl('h3', { text: t.presetsHeader });
+        new Setting(containerEl).setHeading().setName(t.presetsHeader);
 
         new Setting(containerEl)
             .setName(t.savePresetName)
@@ -636,22 +637,24 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
             .addButton(btn => btn
                 .setButtonText(t.savePresetBtn)
                 .setCta()
-                .onClick(async () => {
-                    const name = await this.promptForName(t.presetNamePrompt, t.cancel, t.save);
-                    if (!name) return;
-                    const preset: FilterPreset = {
-                        name,
-                        includedFolders: this.plugin.settings.includedFolders,
-                        includedTags: this.plugin.settings.includedTags,
-                        includedProperties: this.plugin.settings.includedProperties,
-                        excludedFolders: this.plugin.settings.excludedFolders,
-                        matchCondition: this.plugin.settings.matchCondition,
-                    };
-                    this.plugin.presets.push(preset);
-                    await this.plugin.savePluginData();
-                    this.plugin.registerPresetCommands();
-                    new Notice(t.presetSaved(name));
-                    this.display();
+                .onClick(() => {
+                    void (async () => {
+                        const name = await this.promptForName(t.presetNamePrompt, t.cancel, t.save);
+                        if (!name) return;
+                        const preset: FilterPreset = {
+                            name,
+                            includedFolders: this.plugin.settings.includedFolders,
+                            includedTags: this.plugin.settings.includedTags,
+                            includedProperties: this.plugin.settings.includedProperties,
+                            excludedFolders: this.plugin.settings.excludedFolders,
+                            matchCondition: this.plugin.settings.matchCondition,
+                        };
+                        this.plugin.presets.push(preset);
+                        await this.plugin.savePluginData();
+                        this.plugin.registerPresetCommands();
+                        new Notice(t.presetSaved(name));
+                        this.display();
+                    })();
                 }));
 
         for (let i = 0; i < this.plugin.presets.length; i++) {
@@ -662,38 +665,44 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
                 .setDesc(desc)
                 .addButton(btn => btn
                     .setButtonText(t.loadBtn)
-                    .onClick(async () => {
-                        this.plugin.settings.includedFolders = preset.includedFolders;
-                        this.plugin.settings.includedTags = preset.includedTags;
-                        this.plugin.settings.includedProperties = preset.includedProperties;
-                        this.plugin.settings.excludedFolders = preset.excludedFolders;
-                        this.plugin.settings.matchCondition = preset.matchCondition;
-                        await this.plugin.saveSettings();
-                        new Notice(t.presetLoaded(preset.name));
-                        this.display();
+                    .onClick(() => {
+                        void (async () => {
+                            this.plugin.settings.includedFolders = preset.includedFolders;
+                            this.plugin.settings.includedTags = preset.includedTags;
+                            this.plugin.settings.includedProperties = preset.includedProperties;
+                            this.plugin.settings.excludedFolders = preset.excludedFolders;
+                            this.plugin.settings.matchCondition = preset.matchCondition;
+                            await this.plugin.saveSettings();
+                            new Notice(t.presetLoaded(preset.name));
+                            this.display();
+                        })();
                     }))
                 .addButton(btn => btn
                     .setButtonText(t.deleteBtn)
                     .setWarning()
-                    .onClick(async () => {
-                        this.plugin.presets.splice(i, 1);
-                        await this.plugin.savePluginData();
-                        this.plugin.registerPresetCommands();
-                        new Notice(t.presetDeleted(preset.name));
-                        this.display();
+                    .onClick(() => {
+                        void (async () => {
+                            this.plugin.presets.splice(i, 1);
+                            await this.plugin.savePluginData();
+                            this.plugin.registerPresetCommands();
+                            new Notice(t.presetDeleted(preset.name));
+                            this.display();
+                        })();
                     }));
         }
 
-        containerEl.createEl('h3', { text: t.behaviorHeader });
+        new Setting(containerEl).setHeading().setName(t.behaviorHeader);
 
         new Setting(containerEl)
             .setName(t.openInNewTabName)
             .setDesc(t.openInNewTabDesc)
             .addToggle(tog => tog
                 .setValue(this.plugin.settings.openInNewTab)
-                .onChange(async (v) => {
-                    this.plugin.settings.openInNewTab = v;
-                    await this.plugin.saveSettings();
+                .onChange((v) => {
+                    void (async () => {
+                        this.plugin.settings.openInNewTab = v;
+                        await this.plugin.saveSettings();
+                    })();
                 }));
 
         new Setting(containerEl)
@@ -702,10 +711,12 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
             .addText(text => text
                 .setPlaceholder('5')
                 .setValue(String(this.plugin.settings.historySize))
-                .onChange(async (v) => {
-                    const num = parseInt(v, 10);
-                    this.plugin.settings.historySize = isNaN(num) ? 5 : Math.max(0, num);
-                    await this.plugin.saveSettings();
+                .onChange((v) => {
+                    void (async () => {
+                        const num = parseInt(v, 10);
+                        this.plugin.settings.historySize = isNaN(num) ? 5 : Math.max(0, num);
+                        await this.plugin.saveSettings();
+                    })();
                 }));
 
         new Setting(containerEl)
@@ -714,10 +725,12 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
             .addText(text => text
                 .setPlaceholder('3')
                 .setValue(String(this.plugin.settings.batchSize))
-                .onChange(async (v) => {
-                    const num = parseInt(v, 10);
-                    this.plugin.settings.batchSize = isNaN(num) ? 3 : Math.max(1, Math.min(20, num));
-                    await this.plugin.saveSettings();
+                .onChange((v) => {
+                    void (async () => {
+                        const num = parseInt(v, 10);
+                        this.plugin.settings.batchSize = isNaN(num) ? 3 : Math.max(1, Math.min(20, num));
+                        await this.plugin.saveSettings();
+                    })();
                 }));
 
         new Setting(containerEl)
@@ -726,11 +739,13 @@ class ImprovedRandomNoteSettingTab extends PluginSettingTab {
             .addButton(btn => btn
                 .setButtonText(t.clearHistoryBtn)
                 .setCta()
-                .onClick(async () => {
-                    this.plugin.recentHistory = [];
-                    await this.plugin.savePluginData();
-                    new Notice(t.historyClearedNotice);
-                    this.display();
+                .onClick(() => {
+                    void (async () => {
+                        this.plugin.recentHistory = [];
+                        await this.plugin.savePluginData();
+                        new Notice(t.historyClearedNotice);
+                        this.display();
+                    })();
                 }));
     }
 
@@ -782,10 +797,8 @@ class PromptModal extends Modal {
         this.inputEl = contentEl.createEl('input', {
             type: 'text',
             value: this.defaultValue,
-            cls: 'prompt-input',
+            cls: 'prompt-input-full',
         });
-        this.inputEl.style.width = '100%';
-        this.inputEl.style.marginBottom = '1em';
         this.inputEl.focus();
 
         this.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -796,10 +809,7 @@ class PromptModal extends Modal {
             }
         });
 
-        const btnContainer = contentEl.createDiv({ cls: 'prompt-buttons' });
-        btnContainer.style.display = 'flex';
-        btnContainer.style.justifyContent = 'flex-end';
-        btnContainer.style.gap = '8px';
+        const btnContainer = contentEl.createDiv({ cls: 'prompt-buttons-container' });
 
         const cancelBtn = btnContainer.createEl('button', { text: this.cancelLabel });
         cancelBtn.addEventListener('click', () => {
@@ -814,7 +824,8 @@ class PromptModal extends Modal {
         });
     }
 
-    onClose() {
+    async onClose() {
+        await Promise.resolve();
         this.contentEl.empty();
     }
 }

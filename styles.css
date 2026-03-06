@@ -124,3 +124,14 @@
 .random-note-btn-open:hover {
     background: var(--interactive-accent-hover);
 }
+/* Prompt Modal */
+.prompt-input-full {
+    width: 100%;
+    margin-bottom: 1em;
+}
+
+.prompt-buttons-container {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
