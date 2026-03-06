@@ -114,20 +114,19 @@ export default class ImprovedRandomNotePlugin extends Plugin {
     async activateView() {
         const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_RANDOM_NOTE);
         if (existing.length > 0) {
-            this.app.workspace.revealLeaf(existing[0]);
+            void this.app.workspace.revealLeaf(existing[0]);
             return;
         }
         const leaf = this.app.workspace.getRightLeaf(false);
         if (leaf) {
             await leaf.setViewState({ type: VIEW_TYPE_RANDOM_NOTE, active: true });
-            this.app.workspace.revealLeaf(leaf);
+            void this.app.workspace.revealLeaf(leaf);
         }
     }
 
     registerPresetCommands() {
         // Удаляем старые команды пресетов
         for (const cmdId of this.presetCommandIds) {
-            // @ts-ignore — internal API
             (this.app as unknown as { commands: { removeCommand: (id: string) => void } }).commands.removeCommand(cmdId);
         }
         this.presetCommandIds = [];
@@ -398,7 +397,7 @@ class RandomNoteView extends ItemView {
             text: file.basename,
             cls: 'random-note-title',
         });
-        title.addEventListener('click', () => this.openCurrentNote());
+        title.addEventListener('click', () => { void this.openCurrentNote(); });
 
         // Путь
         card.createEl('div', {
@@ -447,13 +446,13 @@ class RandomNoteView extends ItemView {
             cls: 'random-note-btn',
         });
         refreshBtn.textContent = this.plugin.t.widgetNext;
-        refreshBtn.addEventListener('click', () => this.showRandomNote());
+        refreshBtn.addEventListener('click', () => { void this.showRandomNote(); });
 
         const openBtn = btnContainer.createEl('button', {
             cls: 'random-note-btn random-note-btn-open',
         });
         openBtn.textContent = this.plugin.t.widgetOpen;
-        openBtn.addEventListener('click', () => this.openCurrentNote());
+        openBtn.addEventListener('click', () => { void this.openCurrentNote(); });
         openBtn.disabled = !this.currentFile;
     }
 
@@ -500,7 +499,7 @@ abstract class MultiSuggest<T> extends AbstractInputSuggest<T> {
         el.setText(this.toString(item));
     }
 
-    selectSuggestion(item: T, evt: MouseEvent | KeyboardEvent): void {
+    selectSuggestion(item: T): void {
         const parts = this.inputEl.value.split(',').map(s => s.trim());
         parts.pop(); // Удаляем незаконченную часть
         parts.push(this.toString(item));
@@ -521,7 +520,7 @@ class FolderSuggest extends MultiSuggest<TFolder> {
 
 class TagSuggest extends MultiSuggest<string> {
     getItems(): string[] {
-        // @ts-ignore — getTags() может вернуть undefined в некоторых версиях Obsidian
+        // @ts-expect-error — getTags() может вернуть undefined в некоторых версиях Obsidian
         const tagsObj = this.app.metadataCache.getTags?.() ?? {};
         const tags = Object.keys(tagsObj);
         return tags.map(t => t.startsWith('#') ? t : '#' + t);
@@ -531,7 +530,7 @@ class TagSuggest extends MultiSuggest<string> {
 
 class PropertySuggest extends MultiSuggest<string> {
     getItems(): string[] {
-        // @ts-ignore
+        // @ts-expect-error — getAllPropertyNames() может вернуть undefined
         return this.app.metadataCache.getAllPropertyNames?.() || [];
     }
     toString(name: string): string { return name; }
@@ -557,8 +556,8 @@ class PresetPickerModal extends FuzzySuggestModal<FilterPreset> {
         return preset.name;
     }
 
-    onChooseItem(preset: FilterPreset, evt: MouseEvent | KeyboardEvent): void {
-        this.plugin.openRandomNote(preset);
+    onChooseItem(preset: FilterPreset): void {
+        void this.plugin.openRandomNote(preset);
     }
 }
 
@@ -824,8 +823,7 @@ class PromptModal extends Modal {
         });
     }
 
-    async onClose() {
-        await Promise.resolve();
+    onClose() {
         this.contentEl.empty();
     }
 }
