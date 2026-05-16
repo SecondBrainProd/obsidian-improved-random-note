@@ -190,17 +190,18 @@ export default class ImprovedRandomNotePlugin extends Plugin {
     }
 
     async loadSettings() {
-        const data = await this.loadData();
-        if (data && data.settings) {
-            this.settings = this.validateSettings(data.settings);
-            this.recentHistory = Array.isArray(data.recentHistory)
-                ? data.recentHistory.filter((p: unknown): p is string => typeof p === 'string')
+        const raw: unknown = await this.loadData();
+        const data = (raw !== null && typeof raw === 'object') ? raw as Record<string, unknown> : null;
+        if (data?.['settings'] !== undefined) {
+            this.settings = this.validateSettings(data['settings']);
+            this.recentHistory = Array.isArray(data['recentHistory'])
+                ? (data['recentHistory'] as unknown[]).filter((p): p is string => typeof p === 'string')
                 : [];
-            this.presets = Array.isArray(data.presets)
-                ? data.presets.map((p: unknown) => this.validatePreset(p)).filter((p: FilterPreset | null): p is FilterPreset => p !== null)
+            this.presets = Array.isArray(data['presets'])
+                ? (data['presets'] as unknown[]).map(p => this.validatePreset(p)).filter((p): p is FilterPreset => p !== null)
                 : [];
         } else {
-            this.settings = this.validateSettings(data);
+            this.settings = this.validateSettings(raw);
             this.recentHistory = [];
             this.presets = [];
         }
@@ -251,7 +252,8 @@ export default class ImprovedRandomNotePlugin extends Plugin {
                     const cache = this.app.metadataCache.getFileCache(file);
                     const fileTags: string[] = [];
                     if (cache?.frontmatter) {
-                        const tags = cache.frontmatter.tags || cache.frontmatter.tag;
+                        const fm = cache.frontmatter as Record<string, unknown>;
+                        const tags = fm['tags'] ?? fm['tag'];
                         if (Array.isArray(tags)) fileTags.push(...tags.map(String));
                         else if (tags) fileTags.push(String(tags));
                     }
@@ -400,7 +402,7 @@ class RandomNoteView extends ItemView {
         title.addEventListener('click', () => { void this.openCurrentNote(); });
 
         // Путь
-        card.createEl('div', {
+        card.createDiv({
             text: file.parent?.path || '/',
             cls: 'random-note-path',
         });
@@ -409,7 +411,8 @@ class RandomNoteView extends ItemView {
         const cache = this.app.metadataCache.getFileCache(file);
         const tags: string[] = [];
         if (cache?.frontmatter) {
-            const fmTags = cache.frontmatter.tags || cache.frontmatter.tag;
+            const fm = cache.frontmatter as Record<string, unknown>;
+            const fmTags = fm['tags'] ?? fm['tag'];
             if (Array.isArray(fmTags)) tags.push(...fmTags.map(String));
             else if (fmTags) tags.push(String(fmTags));
         }
@@ -419,7 +422,7 @@ class RandomNoteView extends ItemView {
             const tagsEl = card.createDiv({ cls: 'random-note-tags' });
             const uniqueTags = [...new Set(tags.map(t => t.startsWith('#') ? t : '#' + t))];
             for (const tag of uniqueTags) {
-                tagsEl.createEl('span', { text: tag, cls: 'random-note-tag' });
+                tagsEl.createSpan({ text: tag, cls: 'random-note-tag' });
             }
         }
 
@@ -520,8 +523,8 @@ class FolderSuggest extends MultiSuggest<TFolder> {
 
 class TagSuggest extends MultiSuggest<string> {
     getItems(): string[] {
-        // @ts-expect-error — getTags() может вернуть undefined в некоторых версиях Obsidian
-        const tagsObj = this.app.metadataCache.getTags?.() ?? {};
+        // @ts-expect-error — getTags() is an internal API not in official types
+        const tagsObj = (this.app.metadataCache.getTags?.() as Record<string, number> | undefined) ?? {};
         const tags = Object.keys(tagsObj);
         return tags.map(t => t.startsWith('#') ? t : '#' + t);
     }
@@ -530,8 +533,8 @@ class TagSuggest extends MultiSuggest<string> {
 
 class PropertySuggest extends MultiSuggest<string> {
     getItems(): string[] {
-        // @ts-expect-error — getAllPropertyNames() может вернуть undefined
-        return this.app.metadataCache.getAllPropertyNames?.() || [];
+        // @ts-expect-error — getAllPropertyNames() is an internal API not in official types
+        return (this.app.metadataCache.getAllPropertyNames?.() as string[] | undefined) ?? [];
     }
     toString(name: string): string { return name; }
 }
