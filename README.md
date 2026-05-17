@@ -47,12 +47,12 @@ An [Obsidian](https://obsidian.md) plugin that opens a random note based on cust
 
 ### From Obsidian Community Plugins
 1. Open **Settings → Community plugins → Browse**
-2. Search for **"Improved Random Note"**
+2. Search for **"Improved Random Note Pro"**
 3. Click **Install**, then **Enable**
 
 ### Manual Installation
-1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/dementiy/obsidian-improved-random-note/releases)
-2. Create a folder: `.obsidian/plugins/improved-random-note/`
+1. Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/SecondBrainProd/obsidian-improved-random-note/releases)
+2. Create a folder: `.obsidian/plugins/improved-random-note-pro/`
 3. Copy the three files into that folder
 4. Restart Obsidian and enable the plugin in **Settings → Community plugins**
 
@@ -61,7 +61,7 @@ An [Obsidian](https://obsidian.md) plugin that opens a random note based on cust
 ```bash
 # Clone the repo into your vault's plugins folder
 cd /path/to/vault/.obsidian/plugins/
-git clone https://github.com/dementiy/obsidian-improved-random-note.git
+git clone https://github.com/SecondBrainProd/obsidian-improved-random-note.git
 cd obsidian-improved-random-note
 
 # Install dependencies

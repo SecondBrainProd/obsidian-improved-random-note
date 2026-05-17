@@ -1,12 +1,13 @@
-/* Обеспечиваем, чтобы список подсказок всегда был поверх всех элементов модального окна */
-.suggestion-container {
-    z-index: 10000 !important;
-    pointer-events: all !important;
+/* Ensure suggestion dropdown appears above modal content */
+.modal .suggestion-container,
+.prompt .suggestion-container {
+    z-index: 10000;
+    pointer-events: all;
 }
 
-.suggestion-item {
-    cursor: pointer !important;
-    pointer-events: all !important;
+.suggestion-container .suggestion-item {
+    cursor: pointer;
+    pointer-events: all;
 }
 
 /* Подсветка выбранного элемента */
