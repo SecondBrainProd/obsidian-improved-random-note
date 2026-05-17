@@ -1,7 +1,7 @@
 # Improved Random Note
 
 <div align="center">
-  <img src="assets/preview.png" alt="Improved Random Note Preview">
+  <img src="assets/cover.png" alt="Improved Random Note">
 </div>
 
 An [Obsidian](https://obsidian.md) plugin that opens a random note based on customizable filters. Go beyond simple randomness — focus on the notes that matter to you.
@@ -39,9 +39,9 @@ An [Obsidian](https://obsidian.md) plugin that opens a random note based on cust
 
 ## 📸 Screenshots
 
-![Settings and Presets](assets/screenshot-1.png)
-![Sidebar Widget](assets/screenshot-2.png)
-![Random Note in action](assets/screenshot-3.png)
+![Screenshot 1](assets/screenshots/screen-1.png)
+![Screenshot 2](assets/screenshots/screen-2.png)
+![Screenshot 3](assets/screenshots/screen-3.png)
 
 ## 🚀 Installation
 
