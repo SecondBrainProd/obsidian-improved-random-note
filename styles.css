@@ -71,8 +71,6 @@
 .random-note-preview {
     font-size: 0.85em;
     color: var(--text-normal);
-    max-height: 200px;
-    overflow-y: auto;
     line-height: 1.5;
     border-top: 1px solid var(--background-modifier-border);
     padding-top: 8px;

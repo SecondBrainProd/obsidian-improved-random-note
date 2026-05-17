@@ -433,8 +433,7 @@ class RandomNoteView extends ItemView {
             // Убираем frontmatter
             const fmMatch = content.match(/^---\n[\s\S]*?\n---\n?/);
             if (fmMatch) content = content.slice(fmMatch[0].length);
-            const excerpt = content.trim().slice(0, 300);
-            await MarkdownRenderer.render(this.app, excerpt, previewEl, file.path, this);
+            await MarkdownRenderer.render(this.app, content.trim(), previewEl, file.path, this);
         } catch {
             previewEl.createEl('p', { text: this.plugin.t.widgetPreviewError });
         }
