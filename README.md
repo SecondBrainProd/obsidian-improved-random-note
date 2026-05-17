@@ -45,7 +45,7 @@ An [Obsidian](https://obsidian.md) plugin that opens a random note based on cust
 
 ## 🚀 Installation
 
-### From Obsidian Community Plugins (coming soon)
+### From Obsidian Community Plugins
 1. Open **Settings → Community plugins → Browse**
 2. Search for **"Improved Random Note"**
 3. Click **Install**, then **Enable**
